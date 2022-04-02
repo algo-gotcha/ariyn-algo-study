@@ -3,22 +3,23 @@ use std::ptr::NonNull;
 struct Node<T> {
     value: T,
     next: Option<NonNull<Node<T>>>,
+    prev: Option<NonNull<Node<T>>>,
 }
 
 impl<T> Node<T> {
     fn new(v:T) -> Node<T> {
-        Node {value:v, next:None}
+        Node {value:v, next:None, prev:None}
     }
 }
 
 struct LinkedList<T> {
     head: Option<NonNull<Node<T>>>,
-    // tail: Option<Node>,
+    tail: Option<NonNull<Node<T>>>,
 }
 
 impl<T> LinkedList<T> {
     fn new() -> Self {
-        LinkedList{head: None}
+        LinkedList{head: None, tail: None}
     }
 
     fn push(&mut self, v: T) {
@@ -28,6 +29,18 @@ impl<T> LinkedList<T> {
     fn push_node(&mut self, mut node: Box<Node<T>>) {
         node.next = self.head;
         self.head = Some(Box::leak(node).into());
+
+        match self.head {
+          Some(n) => unsafe{
+            (*n.as_ptr()).prev = self.head;
+          }
+          _ => {}
+        };
+
+
+        if self.tail == None {
+            self.tail = self.head;
+        }
     }
 
     fn pop(&mut self) -> Option<T> {
@@ -38,6 +51,17 @@ impl<T> LinkedList<T> {
         self.head.map(|n| unsafe {
             let n = Box::from_raw(n.as_ptr());
             self.head = n.next;
+
+            match self.head {
+                Some(n) => unsafe {
+                    (*n.as_ptr()).prev = None;
+                }
+                _ => {}
+            }
+
+            if n.next == None {
+                self.tail = None;
+            }
 
             n
         })
