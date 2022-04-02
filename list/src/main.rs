@@ -42,6 +42,28 @@ impl<T> LinkedList<T> {
             n
         })
     }
+
+    fn node_at(&mut self, index:i32) -> Option<NonNull<Node<T>>> {
+        let mut x = self.head.clone();
+
+        let mut current_index = 0;
+        loop {
+            unsafe{
+                if (*x.unwrap().as_ptr()).next.is_none() {
+                    break;
+                }
+            }
+
+            x = x.map(|n| unsafe{n.as_ref().next}).unwrap();
+            current_index = current_index+1;
+
+            if current_index == index {
+                break
+            }
+        }
+
+        x
+    }
 }
 
 fn main() {
@@ -52,6 +74,8 @@ fn main() {
     l.push(4);
     l.push(5);
 
+    let node = l.node_at(3);
+    unsafe{ println!("popped index {} is {}", 3, (*node.as_ref().unwrap().as_ptr()).value); }
 
     loop {
         let element = l.pop();
