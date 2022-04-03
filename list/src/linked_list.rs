@@ -230,7 +230,7 @@ impl<T: Clone> LinkedList<T> {
             self.head = n.next;
 
             match self.head {
-                Some(n) => unsafe {
+                Some(n) => {
                     (*n.as_ptr()).prev = None;
                 }
                 _ => {}
