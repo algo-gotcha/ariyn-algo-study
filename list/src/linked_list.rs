@@ -151,7 +151,7 @@ mod tests {
 
         let index_3_node = ll.node_at(3);
 
-        unsafe { assert_eq!(1, (*index_3_node.unwrap().as_ptr()).value); }
+        assert_eq!(1, index_3_node.unwrap().value);
         assert_eq!(4, ll.pop().unwrap());
         assert_eq!(3, ll.pop().unwrap());
         assert_eq!(2, ll.pop().unwrap());
@@ -161,24 +161,40 @@ mod tests {
 
 use std::ptr::NonNull;
 
-struct Node<T> {
+struct Node<T: Clone> {
     value: T,
     next: Option<NonNull<Node<T>>>,
     prev: Option<NonNull<Node<T>>>,
 }
 
-impl<T> Node<T> {
+impl<T: Clone> Node<T> {
     fn new(v:T) -> Node<T> {
         Node {value:v, next:None, prev:None}
     }
 }
 
-pub struct LinkedList<T> {
+impl<T: Clone> Clone for Node<T> {
+    #[warn(unused_variables)]
+    fn clone(&self) -> Self {
+        Node {
+            value: self.value.clone(),
+            next: self.next,
+            prev: self.prev,
+        }
+    }
+
+    #[warn(unused_variables)]
+    fn clone_from(&mut self, _source: &Self) {
+        unimplemented!()
+    }
+}
+
+pub struct LinkedList<T: Clone> {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
 }
 
-impl<T> LinkedList<T> {
+impl<T: Clone> LinkedList<T> {
     pub fn new() -> Self {
         LinkedList{head: None, tail: None}
     }
@@ -228,7 +244,7 @@ impl<T> LinkedList<T> {
         })
     }
 
-    fn node_at(&mut self, index:i32) -> Option<NonNull<Node<T>>> {
+    fn node_at (&mut self, index:i32) -> Option<Node<T>> {
         let mut x = self.head.clone();
 
         let mut current_index = 0;
@@ -247,6 +263,8 @@ impl<T> LinkedList<T> {
             }
         }
 
-        x
+        unsafe {
+            Some((*x.unwrap().as_ptr()).clone())
+        }
     }
 }
