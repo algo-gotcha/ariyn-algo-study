@@ -249,6 +249,10 @@ impl<T: Clone> LinkedList<T> {
 
         let mut current_index = 0;
         loop {
+            if current_index == index {
+                break
+            }
+
             unsafe{
                 if (*x.unwrap().as_ptr()).next.is_none() {
                     break;
@@ -257,10 +261,6 @@ impl<T: Clone> LinkedList<T> {
 
             x = x.map(|n| unsafe{n.as_ref().next}).unwrap();
             current_index = current_index+1;
-
-            if current_index == index {
-                break
-            }
         }
 
         unsafe {
