@@ -157,6 +157,20 @@ mod tests {
         assert_eq!(2, ll.pop().unwrap());
         assert_eq!(1, ll.pop().unwrap());
     }
+
+    #[test]
+    /// 두개 이상의 값이 들어 있을때, push_at을 사용했을때 새로운 노드는 두 노드 사이에 추가되는가?
+    fn push_at_when_two_nodes_exists() {
+        let mut ll: LinkedList<i32> = LinkedList::new();
+        ll.push(1);
+        ll.push(3);
+
+        unsafe { ll.push_at(1, 2); } // 0번째 인덱스 뒤에 2를 가진 노드를 추가한다.
+
+        assert_eq!(3, ll.pop().unwrap());
+        assert_eq!(2, ll.pop().unwrap());
+        assert_eq!(1, ll.pop().unwrap());
+    }
 }
 
 use std::ptr::NonNull;
@@ -265,6 +279,34 @@ impl<T: Clone> LinkedList<T> {
 
         unsafe {
             Some((*x.unwrap().as_ptr()).clone())
+        }
+    }
+
+    /// push_at will works like push. which means it will store data in front of nth node, just like push puts data into front.
+    unsafe fn push_at(&mut self, index:i32, value:T){
+        let target = self.node_at(index);
+        let node = Node::new(value);
+
+        match target {
+            Some(mut target) => {
+                let prev = target.prev;
+
+                if prev.is_some() {
+                    (*prev.unwrap().as_ptr()).next = Some(Box::leak(Box::new(node)).into());
+
+                    let next = (*prev.unwrap().as_ptr()).next;
+                    target.prev = next;
+                    (*next.unwrap().as_ptr()).next = Some(Box::leak(Box::new(target)).into());
+                } else { // target is head
+                    target.prev = Some(Box::leak(Box::new(node)).into());
+
+                    let prev = target.prev;
+
+                    (*prev.unwrap().as_ptr()).next = Some(Box::leak(Box::new(target)).into());
+                    self.head = prev;
+                }
+            }
+            None => {unimplemented!()}
         }
     }
 }
