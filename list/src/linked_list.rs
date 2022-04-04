@@ -258,7 +258,7 @@ impl<T: Clone> LinkedList<T> {
         })
     }
 
-    fn node_at (&mut self, index:i32) -> Option<Node<T>> {
+    fn node_at (&mut self, index:i32) -> Option<Node<T>> { // TODO: raise error when index is bigger then linked list size
         let mut x = self.head.clone();
 
         let mut current_index = 0;
