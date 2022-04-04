@@ -219,15 +219,15 @@ impl<T: Clone> LinkedList<T> {
 
     fn push_node(&mut self, mut node: Box<Node<T>>) {
         node.next = self.head;
-        self.head = Some(Box::leak(node).into());
 
-        match self.head {
-            Some(n) => unsafe{
-                (*n.as_ptr()).prev = self.head;
+        if self.head.is_some() {
+            unsafe{
+                (*self.head.unwrap().as_ptr()).prev = Some(Box::leak(node).into());
+                self.head = (*self.head.unwrap().as_ptr()).prev;
             }
-            _ => {}
-        };
-
+        } else {
+            self.head = Some(Box::leak(node).into());
+        }
 
         if self.tail == None {
             self.tail = self.head;
