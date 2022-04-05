@@ -1,7 +1,7 @@
 # rust-study
 implement data structure to study rust-lang
 
-* [ ] Double Linked List
+* [X] Double Linked List
 * [ ] Tree
 * [ ] Advanced Tree (such as RB tree, Heap Tree, Binary Tree, etc...)
 * [ ] Graph
