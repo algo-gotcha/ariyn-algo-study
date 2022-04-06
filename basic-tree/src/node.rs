@@ -2,8 +2,8 @@ use std::borrow::{BorrowMut};
 
 #[cfg(test)]
 mod tests {
-    use crate::tree::IterationType::{Postorder, Preorder};
-    use crate::tree::Node;
+    use crate::node::IterationType::{Postorder, Preorder};
+    use crate::node::Node;
 
     #[test]
     /// new 함수를 호출할 경우 초기화된 node를 생성
@@ -233,8 +233,6 @@ impl Clone for IterationType {
 
 struct NodeIterator {
     root: Box<Node>,
-    // current: *mut Node,
-    // index: i32,
     routes: Vec<Box<Node>>,
     iteration_type:IterationType,
 }

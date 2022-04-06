@@ -1,4 +1,4 @@
-mod tree;
+mod node;
 
 fn main() {
     println!("Hello, world!");
