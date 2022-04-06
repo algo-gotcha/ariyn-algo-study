@@ -1,5 +1,8 @@
+use std::borrow::{Borrow, BorrowMut};
+
 #[cfg(test)]
 mod tests {
+    use crate::tree::IterationType::Preorder;
     use crate::tree::Node;
 
     #[test]
@@ -72,19 +75,22 @@ mod tests {
     }
 
     #[test]
-    /// iter 함수를 Preorder 파라미터로 호출할 경우, preorder (NLR) 알맞은 순서로 정렬된 iter 타입을 반환
+    /// iter 함수를 Preorder 파라미터(=IterationType::Preorder)로 호출할 경우, preorder (NLR) 알맞은 순서로 정렬된 iter 타입을 반환
     /// 이경우 순서는 1,2,3,4,5,6,7,10,8,9 가 된다.
-    /// ```
-    /// let x = &[1, 2, 4];
-    /// let mut iterator = x.iter();
-    ///
-    /// assert_eq!(iterator.next(), Some(&1));
-    /// assert_eq!(iterator.next(), Some(&2));
-    /// assert_eq!(iterator.next(), Some(&4));
-    /// assert_eq!(iterator.next(), None);
-    /// ```
-    fn iter_with_bfs() {
-        // TODO: fix this into function
+    fn iter_with_dfs() {
+        let mut node = init_basic_tree();
+        let mut actual:Vec<i32> = Vec::new();
+
+        let mut iterator = node.iter(Preorder);
+        while let Some(next) = iterator.next() {
+            actual.push(next.value);
+        }
+
+        let expect: &[i32] = &[1,2,3,4,5,6,7,10,8,9];
+        assert_eq!(Vec::from(expect), actual);
+    }
+
+    fn init_basic_tree() -> Node {
         let mut node = Node::new(1);
 
         let mut c1 = Node::new(2);
@@ -106,11 +112,7 @@ mod tests {
 
         node.add_child(c2);
 
-        iterator = node.iter();
-
-        while let Some(next) = iterator.next() {
-
-        }
+        node
     }
 }
 
@@ -119,6 +121,21 @@ struct Node {
     size: i32,
     parent: Option<*mut Node>,
     children: Vec<Node>,
+}
+
+impl Clone for Node {
+    fn clone(&self) -> Self {
+        Node {
+            value: self.value,
+            size: self.size,
+            parent: self.parent.clone(),
+            children: self.children.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        todo!()
+    }
 }
 
 impl Node {
@@ -157,5 +174,87 @@ impl Node {
         let deleted = self.children.remove(index as usize);
         self.size = self.size - 1;
         Some(deleted)
+    }
+
+    fn iter(&mut self, iteration_type:IterationType) -> NodeIterator {
+        NodeIterator::new(self.clone(), iteration_type)
+    }
+}
+
+enum IterationType {
+    Preorder
+}
+
+impl Clone for IterationType {
+    fn clone(&self) -> Self {
+        match self {
+            IterationType::Preorder => {
+                IterationType::Preorder
+            }
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        todo!()
+    }
+}
+
+struct NodeIterator {
+    root: Box<Node>,
+    // current: *mut Node,
+    // index: i32,
+    routes: Vec<Box<Node>>,
+    iteration_type:IterationType,
+}
+
+impl Iterator for NodeIterator {
+    type Item = Box<Node>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let node = self.routes.pop();
+        node
+    }
+}
+
+impl NodeIterator {
+    fn new(root: Node, iteration_type: IterationType) -> NodeIterator {
+
+        let mut iterator = NodeIterator{
+            root: Box::new(root),
+            // index:0,
+            routes: Vec::new(),
+            iteration_type,
+        };
+
+        {
+            let iterator = iterator.borrow_mut();
+            let root = iterator.root.clone();
+            let iteration_type = iterator.iteration_type.clone();
+
+            iterator.find_route(root, &iteration_type);
+            iterator.routes.reverse();
+        }
+
+        iterator
+    }
+
+    fn find_route(&mut self, curr: Box<Node>, iteration_type: &IterationType) {
+        match iteration_type {
+            IterationType::Preorder => {
+                self.routes.push(curr);
+
+                let curr = self.routes.last().unwrap().clone();
+
+                for n in curr.children.clone() {
+                    self.find_route(Box::new(n), iteration_type);
+                }
+            },
+        }
+    }
+
+    unsafe fn print_routes(&mut self) {
+        for n in self.routes.clone() {
+            println!("{} - ", n.value);
+        }
     }
 }
