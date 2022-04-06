@@ -2,7 +2,7 @@ use std::borrow::{Borrow, BorrowMut};
 
 #[cfg(test)]
 mod tests {
-    use crate::tree::IterationType::Preorder;
+    use crate::tree::IterationType::{Postorder, Preorder};
     use crate::tree::Node;
 
     #[test]
@@ -90,6 +90,34 @@ mod tests {
         assert_eq!(Vec::from(expect), actual);
     }
 
+    #[test]
+    /// iter 함수를 Postorder 파라미터(=IterationType::Postorder)로 호출할 경우, postorder (LRN) 알맞은 순서로 정렬된 iter 타입을 반환
+    /// 이경우 순서는 3,4,5,2,10,7,8,9,6,1 가 된다.
+    fn iter_with_bfs() {
+        let mut node = init_basic_tree();
+        let mut actual:Vec<i32> = Vec::new();
+
+        let mut iterator = node.iter(Postorder);
+        while let Some(next) = iterator.next() {
+            actual.push(next.value);
+        }
+
+        let expect: &[i32] = &[3, 4, 5, 2, 10, 7, 8, 9, 6, 1];
+        assert_eq!(Vec::from(expect), actual);
+    }
+
+    /// tree struct
+    ///      1
+    ///    /   \
+    ///   2     6
+    /// / |\   /|\
+    /// 3 4 5 7 8 9
+    ///       |
+    ///      10
+    ///
+    /// preorder(NLR) : 1, 2, 3, 4, 5, 6, 7, 10, 8, 9
+    /// postorder(LRN): 3, 4, 5, 2, 10, 7, 8, 9, 6, 1
+    /// inorder (LNR) : undefined. there is 3 childre for some nodes.
     fn init_basic_tree() -> Node {
         let mut node = Node::new(1);
 
@@ -182,7 +210,8 @@ impl Node {
 }
 
 enum IterationType {
-    Preorder
+    Preorder,
+    Postorder
 }
 
 impl Clone for IterationType {
@@ -190,6 +219,9 @@ impl Clone for IterationType {
         match self {
             IterationType::Preorder => {
                 IterationType::Preorder
+            }
+            IterationType:: Postorder => {
+                IterationType:: Postorder
             }
         }
     }
@@ -249,6 +281,13 @@ impl NodeIterator {
                     self.find_route(Box::new(n), iteration_type);
                 }
             },
+            IterationType::Postorder => {
+                for n in curr.children.clone() {
+                    self.find_route(Box::new(n), iteration_type);
+                }
+
+                self.routes.push(curr);
+            }
         }
     }
 
