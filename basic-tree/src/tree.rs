@@ -1,4 +1,4 @@
-use std::borrow::{Borrow, BorrowMut};
+use std::borrow::{BorrowMut};
 
 #[cfg(test)]
 mod tests {
@@ -161,7 +161,7 @@ impl Clone for Node {
         }
     }
 
-    fn clone_from(&mut self, source: &Self) {
+    fn clone_from(&mut self, _: &Self) {
         todo!()
     }
 }
@@ -226,7 +226,7 @@ impl Clone for IterationType {
         }
     }
 
-    fn clone_from(&mut self, source: &Self) {
+    fn clone_from(&mut self, _: &Self) {
         todo!()
     }
 }
@@ -291,6 +291,7 @@ impl NodeIterator {
         }
     }
 
+    #[allow(dead_code)]
     unsafe fn print_routes(&mut self) {
         for n in self.routes.clone() {
             println!("{} - ", n.value);
