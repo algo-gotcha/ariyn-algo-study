@@ -1,7 +1,11 @@
-use std::borrow::{BorrowMut};
+use std::borrow::BorrowMut;
+use std::cell::RefCell;
+use std::collections::LinkedList;
+use std::rc::Rc;
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Borrow;
     use crate::node::IterationType::{Postorder, Preorder};
     use crate::node::Node;
 
@@ -13,7 +17,7 @@ mod tests {
 
         assert_eq!(0, node.size());
         assert_eq!(EXPECT, node.value);
-        assert_eq!(None, node.parent);
+        assert_eq!(true, node.parent.is_none());
     }
 
     #[test]
@@ -27,12 +31,10 @@ mod tests {
         node.add_child(child);
 
         let child = node.get_child(0).unwrap();
-        assert_eq!(CHILD_VALUE, child.value);
+        assert_eq!(CHILD_VALUE, (*child).borrow_mut().value);
 
-        unsafe {
-            let value = (*child.parent().unwrap()).value;
-            assert_eq!(node.value, value);
-        }
+        let value = (*child).borrow_mut().parent.as_ref().unwrap().borrow_mut().value;
+        assert_eq!(node.value, value);
         assert_eq!(1, node.size());
     }
 
@@ -57,7 +59,7 @@ mod tests {
 
         let actual = node.delete_child(0);
 
-        assert_eq!(EXPECT_VALUE, actual.unwrap().value);
+        assert_eq!(EXPECT_VALUE, (*actual.unwrap()).borrow_mut().value);
         assert_eq!(0, node.size());
     }
 
@@ -83,7 +85,7 @@ mod tests {
 
         let mut iterator = node.iter(Preorder);
         while let Some(next) = iterator.next() {
-            actual.push(next.value);
+            actual.push(next.borrow_mut().value);
         }
 
         let expect: &[i32] = &[1,2,3,4,5,6,7,10,8,9];
@@ -144,11 +146,11 @@ mod tests {
     }
 }
 
-struct Node {
+pub struct Node {
     value: i32,
     size: i32,
-    parent: Option<*mut Node>,
-    children: Vec<Node>,
+    parent: Option<Rc<RefCell<Node>>>,
+    children: Vec<Rc<RefCell<Node>>>,
 }
 
 impl Clone for Node {
@@ -180,21 +182,17 @@ impl Node {
         self.size
     }
 
-    fn parent(&mut self) -> Option<*mut Node> {
-        self.parent.clone()
-    }
-
     fn add_child(&mut self, mut child: Node) {
-        child.parent = Some(self);
-        self.children.push(child);
+        child.parent = Some(Rc::new(RefCell::new(self.clone())));
+        self.children.push(Rc::new(RefCell::new(child)));
         self.size = self.size + 1;
     }
 
-    fn get_child(&mut self, index: i32) -> Option<&mut Node> {
-        self.children.get_mut(index as usize)
+    fn get_child(&mut self, index: i32) -> Option<&Rc<RefCell<Node>>> {
+        self.children.get(index as usize)
     }
 
-    fn delete_child(&mut self, index: i32) -> Option<Node> {
+    fn delete_child(&mut self, index: i32) -> Option<Rc<RefCell<Node>>> {
         if self.size <= index {
             return None;
         }
@@ -232,13 +230,13 @@ impl Clone for IterationType {
 }
 
 struct NodeIterator {
-    root: Box<Node>,
-    routes: Vec<Box<Node>>,
+    root: Rc<RefCell<Node>>,
+    routes: Vec<Rc<RefCell<Node>>>,
     iteration_type:IterationType,
 }
 
 impl Iterator for NodeIterator {
-    type Item = Box<Node>;
+    type Item = Rc<RefCell<Node>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.routes.pop();
@@ -250,7 +248,7 @@ impl NodeIterator {
     fn new(root: Node, iteration_type: IterationType) -> NodeIterator {
 
         let mut iterator = NodeIterator{
-            root: Box::new(root),
+            root: Rc::new(RefCell::new(root)),
             // index:0,
             routes: Vec::new(),
             iteration_type,
@@ -268,20 +266,20 @@ impl NodeIterator {
         iterator
     }
 
-    fn find_route(&mut self, curr: Box<Node>, iteration_type: &IterationType) {
+    fn find_route(&mut self, curr: Rc<RefCell<Node>>, iteration_type: &IterationType) {// TODO: 이렇게 clone을 함부로 써도 괜찮은가? 확인할 것.
         match iteration_type {
             IterationType::Preorder => {
                 self.routes.push(curr);
 
                 let curr = self.routes.last().unwrap().clone();
 
-                for n in curr.children.clone() {
-                    self.find_route(Box::new(n), iteration_type);
+                for n in (*curr).borrow_mut().children.clone() {
+                    self.find_route(n, iteration_type);
                 }
             },
             IterationType::Postorder => {
-                for n in curr.children.clone() {
-                    self.find_route(Box::new(n), iteration_type);
+                for n in (*curr).borrow_mut().children.clone() {
+                    self.find_route(n, iteration_type);
                 }
 
                 self.routes.push(curr);
