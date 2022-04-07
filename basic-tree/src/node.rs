@@ -7,7 +7,7 @@ use std::rc::Rc;
 mod tests {
     use std::borrow::Borrow;
     use crate::node::IterationType::{Postorder, Preorder};
-    use crate::node::Node;
+    use crate::node::{Node, Tree};
 
     #[test]
     /// new 함수를 호출할 경우 초기화된 node를 생성
@@ -167,13 +167,52 @@ mod tests {
 
         node
     }
+
+    #[test]
+    fn add_to_tree() {
+        let mut tree = Tree::new();
+
+        tree.add(1);
+
+        assert_eq!(true, tree.root.is_some());
+        assert_eq!(1, (*tree.root.unwrap().clone()).borrow().value);
+    }
+
+    #[test]
+    ///      1
+    ///    /  \
+    ///   2    3
+    ///  / \  / \
+    /// 4  5 6   7
+    fn add_to_tree_with_complete_tree_style() {
+        let mut tree = Tree::new();
+
+        tree.add(1);
+        tree.add(2);
+        tree.add(3);
+        tree.add(4);
+        tree.add(5);
+        tree.add(6);
+        tree.add(7);
+
+        let mut actual:Vec<i32> = Vec::new();
+
+        let mut iterator = (*tree.root.unwrap().clone()).borrow_mut().iter(Preorder);
+
+        while let Some(next) = iterator.next() {
+            actual.push(next.borrow_mut().value);
+        }
+
+        let expect: &[i32] = &[1,2,4,5,3,6,7];
+        assert_eq!(Vec::from(expect), actual);
+    }
 }
 
 pub struct Node {
-    value: i32,
-    size: i32,
-    parent: Option<Rc<RefCell<Node>>>,
-    children: Vec<Rc<RefCell<Node>>>,
+    pub value: i32,
+    pub size: i32,
+    pub parent: Option<Rc<RefCell<Node>>>,
+    pub children: Vec<Rc<RefCell<Node>>>,
 }
 
 impl Clone for Node {
@@ -314,6 +353,75 @@ impl NodeIterator {
     unsafe fn print_routes(&mut self) {
         for n in self.routes.clone() {
             println!("{} - ", (*n).borrow_mut().value);
+        }
+    }
+}
+
+struct Tree {
+    root:Option<Rc<RefCell<Node>>>,
+    children:LinkedList<Rc<RefCell<Node>>>,
+}
+
+impl Tree {
+    fn new() -> Tree {
+        Tree {
+            root: None,
+            children: LinkedList::new(),
+        }
+    }
+
+    fn add(&mut self, value: i32) {
+        match self.root.clone() {
+            Some(root) => {
+                match self.find_non_complete_child_node(root, 0) {
+                    Some(mut n) => {
+                        let children = &mut (*n).borrow_mut().children;
+                        children.push(Rc::new(RefCell::new(Node::new(value))));
+                    }
+                    _ => {
+                        println!("WRONG!!!");
+                    }
+                }
+            }
+            None => {
+                self.root = Some(Rc::new(RefCell::new(Node::new(value))));
+            }
+        }
+
+    }
+
+    fn find_non_complete_child_node(&mut self, node: Rc<RefCell<Node>>, depth:i32) -> Option<Rc<RefCell<Node>>> {
+        if node.borrow().children.len() < 2 {
+            return Some(node);
+        }
+
+        for n in node.borrow().children.clone() {
+            if n.borrow().children.len() < 2 {
+                return Some(n);
+            }
+        }
+
+        for n in node.borrow().children.clone() {
+            match self.find_non_complete_child_node(n, depth+1) {
+                Some(n) => {return Some(n);}
+                _ => {}
+            }
+        }
+
+        None
+    }
+
+    fn print_root(&mut self) {
+        self.print_children(self.root.clone().unwrap(), 0);
+    }
+
+    fn print_children(&mut self, node: Rc<RefCell<Node>>, depth:i32) {
+        let node = node.borrow();
+
+        println!("{}  |-{}", " ".repeat(depth as usize), node.value);
+
+        for n in node.children.clone() {
+            self.print_children(n, depth+1);
         }
     }
 }
