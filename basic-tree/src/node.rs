@@ -101,11 +101,34 @@ mod tests {
 
         let mut iterator = node.iter(Postorder);
         while let Some(next) = iterator.next() {
-            actual.push(next.value);
+            actual.push(next.borrow_mut().value);
         }
 
         let expect: &[i32] = &[3, 4, 5, 2, 10, 7, 8, 9, 6, 1];
         assert_eq!(Vec::from(expect), actual);
+    }
+
+    #[test]
+    fn add_node_during_iter() {
+        let mut node = init_basic_tree();
+
+        let mut iterator = node.iter(Preorder);
+        while let Some(next) = iterator.next() {
+            if next.borrow_mut().value == 3 {
+                next.borrow_mut().add_child(Node::new(15));
+            }
+        }
+
+        let mut actual:Vec<i32> = Vec::new();
+
+        let mut iterator = node.iter(Preorder);
+        while let Some(next) = iterator.next() {
+            actual.push(next.borrow_mut().value);
+        }
+
+        let expect: &[i32] = &[1,2,3,15,4,5,6,7,10,8,9];
+        assert_eq!(Vec::from(expect), actual);
+
     }
 
     /// tree struct
@@ -290,7 +313,7 @@ impl NodeIterator {
     #[allow(dead_code)]
     unsafe fn print_routes(&mut self) {
         for n in self.routes.clone() {
-            println!("{} - ", n.value);
+            println!("{} - ", (*n).borrow_mut().value);
         }
     }
 }
