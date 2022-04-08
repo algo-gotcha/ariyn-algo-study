@@ -1,6 +1,9 @@
-use std::borrow::BorrowMut;
-use std::cell::RefCell;
+use std::borrow::{Borrow, BorrowMut};
+use std::cell::{Ref, RefCell};
+use std::cmp::Ordering;
 use std::collections::LinkedList;
+use std::convert::Infallible;
+use std::ops::Index;
 use std::rc::Rc;
 
 #[cfg(test)]
@@ -206,6 +209,39 @@ mod tests {
         let expect: &[i32] = &[1,2,4,5,3,6,7];
         assert_eq!(Vec::from(expect), actual);
     }
+
+    #[test]
+    /// delete 2
+    ///      1      ->         1
+    ///    /  \              /  \
+    ///   2    3            7    3
+    ///  / \  / \          / \  /
+    /// 4  5 6   7        4  5 6
+    fn delete_from_tree_with_complete_tree_style() {
+        let mut tree = Tree::new();
+
+        tree.add(1);
+        tree.add(2);
+        tree.add(3);
+        tree.add(4);
+        tree.add(5);
+        tree.add(6);
+        tree.add(7);
+
+        let is_deleted = tree.delete(2);
+
+        assert_eq!(true, is_deleted);
+
+        let mut actual:Vec<i32> = Vec::new();
+
+        let mut iterator = (*tree.root.unwrap().clone()).borrow_mut().iter(Preorder);
+        while let Some(next) = iterator.next() {
+            actual.push(next.borrow_mut().value);
+        }
+
+        let expect: &[i32] = &[1,7,4,5,3,6];
+        assert_eq!(Vec::from(expect), actual);
+    }
 }
 
 pub struct Node {
@@ -264,6 +300,51 @@ impl Node {
         Some(deleted)
     }
 
+    fn delete_child_by_value(&mut self, target_value: i32) -> Option<Rc<RefCell<Node>>> {
+        let mut index:Option<usize> = None;
+        let mut iterator = self.children.iter();
+
+        while let node = iterator.next() {
+            if node.is_none() {
+                break
+            }
+
+            if index.is_none() {
+                index = Some(0);
+            } else {
+                index = Some(index.unwrap()+1);
+            }
+
+            if (*node.unwrap().clone()).borrow().value == target_value {
+                break
+            }
+        }
+
+        if index.is_some() {
+            let deleted = self.children.remove(index.unwrap());
+            self.size = self.size - 1;
+            return Some(deleted);
+        }
+
+        None
+    }
+
+    fn replace_children(&mut self, old: Rc<RefCell<Node>>, new:Rc<RefCell<Node>>) {
+        let mut iterator = self.children.iter();
+
+        let index = self.children.iter().position(|r| {
+            (**r).borrow().value == (*old).borrow().value
+        });
+
+        if let Some(index) = index {
+            self.children.push(new.clone());
+
+            let last_index = self.children.len()-1;
+            self.children.swap(index, last_index);
+            self.children.remove(last_index);
+        }
+    }
+
     fn iter(&mut self, iteration_type:IterationType) -> NodeIterator {
         NodeIterator::new(self.clone(), iteration_type)
     }
@@ -306,6 +387,20 @@ impl Iterator for NodeIterator {
     }
 }
 
+impl Clone for NodeIterator {
+    fn clone(&self) -> Self {
+        NodeIterator {
+            root: self.root.clone(),
+            routes: self.routes.clone(),
+            iteration_type: self.iteration_type.clone(),
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        todo!()
+    }
+}
+
 impl NodeIterator {
     fn new(root: Node, iteration_type: IterationType) -> NodeIterator {
 
@@ -326,6 +421,18 @@ impl NodeIterator {
         }
 
         iterator
+    }
+
+    fn len(&self) -> usize {
+        self.routes.len()
+    }
+
+    fn first(&self) -> Option<Rc<RefCell<Node>>> {
+        if self.routes.len() < 1 {
+            return None;
+        }
+
+        Some(self.routes[0].clone())
     }
 
     fn find_route(&mut self, curr: Rc<RefCell<Node>>, iteration_type: &IterationType) {// TODO: 이렇게 clone을 함부로 써도 괜찮은가? 확인할 것.
@@ -387,7 +494,62 @@ impl Tree {
                 self.root = Some(Rc::new(RefCell::new(Node::new(value))));
             }
         }
+    }
 
+    /// delete 함수는 삭제되었다면 true를, 없는 값이라면 false를 리턴한다
+    fn delete(&mut self, value:i32) -> bool {
+        match self.root.clone() {
+            Some(mut root) => {
+                let mut iterator = (*root).borrow_mut().iter(IterationType::Preorder);
+
+                let last_node = iterator.clone().first();
+                let target_index = iterator.clone().position(|r| {
+                    (*r).borrow().value == value
+                });
+
+                if last_node.is_none() || target_index.is_none() {
+                    return false;
+                }
+
+                let last_node = last_node.unwrap();
+
+                let mut original_parent = (*last_node).borrow_mut().clone().parent;
+                // TODO: algorithm order is wrong. should be swap -> remove.
+                if original_parent.is_some() {
+                    // TODO: original_parent.delete(last_node);
+                    let mut original_parent = original_parent.unwrap();
+                    let mut original_parent = (*original_parent).borrow_mut();
+
+                    let last_node_value = (*last_node).borrow().value;
+                    original_parent.borrow_mut().delete_child_by_value(last_node_value);
+                }
+
+                let target_index = iterator.len() - target_index.unwrap() - 1;
+                let mut target_node = iterator.borrow_mut().routes[target_index].clone();
+
+                let mut new_parent = (*target_node).borrow().clone().parent;
+                (*last_node).borrow_mut().parent = new_parent.clone();
+
+                new_parent.map(|parent| {
+                    (*parent).borrow_mut().delete_child((*target_node).borrow().value);
+                    (*parent).borrow_mut().replace_children(target_node.clone(), last_node.clone());
+                });
+
+                (*last_node).borrow_mut().children = (*target_node).borrow().children.clone();
+
+                // TODO: target_node.children.set_parent(last_node);
+                let ln = (*target_node).borrow();
+                let mut children_iter = ln.children.iter();
+                while let Some(c) = children_iter.next() {
+                    (**c).borrow_mut().parent = Some(last_node.clone());
+                }
+
+                true
+            }
+            _ => {
+                false
+            }
+        }
     }
 
     fn find_non_complete_child_node(&mut self, node: Rc<RefCell<Node>>, depth:i32) -> Option<Rc<RefCell<Node>>> {
