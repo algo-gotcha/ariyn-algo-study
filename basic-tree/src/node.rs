@@ -456,11 +456,11 @@ impl NodeIterator {
         }
     }
 
-    #[allow(dead_code)]
-    unsafe fn print_routes(&mut self) {
+    fn print_routes(&mut self) {
         for n in self.routes.clone() {
-            println!("{} - ", (*n).borrow_mut().value);
+            print!("{} ", (*n).borrow_mut().value);
         }
+        println!();
     }
 }
 
@@ -553,17 +553,17 @@ impl Tree {
     }
 
     fn find_non_complete_child_node(&mut self, node: Rc<RefCell<Node>>, depth:i32) -> Option<Rc<RefCell<Node>>> {
-        if node.borrow().children.len() < 2 {
+        if (*node).borrow().children.len() < 2 {
             return Some(node);
         }
 
-        for n in node.borrow().children.clone() {
-            if n.borrow().children.len() < 2 {
+        for n in (*node).borrow().children.clone() {
+            if (*n).borrow().children.len() < 2 {
                 return Some(n);
             }
         }
 
-        for n in node.borrow().children.clone() {
+        for n in (*node).borrow().children.clone() {
             match self.find_non_complete_child_node(n, depth+1) {
                 Some(n) => {return Some(n);}
                 _ => {}
@@ -578,9 +578,9 @@ impl Tree {
     }
 
     fn print_children(&mut self, node: Rc<RefCell<Node>>, depth:i32) {
-        let node = node.borrow();
+        let node = (*node).borrow();
 
-        println!("{}  |-{}", " ".repeat(depth as usize), node.value);
+        println!("{}  |-{}", " ".repeat(depth as usize), (*node).value);
 
         for n in node.children.clone() {
             self.print_children(n, depth+1);
