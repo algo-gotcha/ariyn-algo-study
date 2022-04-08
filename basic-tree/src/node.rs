@@ -481,9 +481,13 @@ impl Tree {
         match self.root.clone() {
             Some(root) => {
                 match self.find_non_complete_child_node(root, 0) {
-                    Some(mut n) => {
-                        let children = &mut (*n).borrow_mut().children;
-                        children.push(Rc::new(RefCell::new(Node::new(value))));
+                    Some(mut parent) => {
+                        let new_node = Rc::new(RefCell::new(Node::new(value)));
+
+                        let children = &mut (*parent).borrow_mut().children;
+                        children.push(new_node.clone());
+
+                        (*new_node).borrow_mut().parent = Some(parent.clone());
                     }
                     _ => {
                         println!("WRONG!!!");
