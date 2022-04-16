@@ -14,9 +14,14 @@ package tree
 
 import (
 	"github.com/stretchr/testify/assert"
+	"math"
 	"strconv"
 	"testing"
 )
+
+func abs(a int) int {
+	return int(math.Abs(float64(a)))
+}
 
 func Test_Add(t *testing.T) {
 	t.Run("새로 만든 tree에 값을 추가 했을때, 순서대로 tree.nodes에 저장됨", func(t *testing.T) {
@@ -374,5 +379,23 @@ func Test_TreeReBalance(t *testing.T) {
 		assert.Equal(t, "4", tree.root.Children[Left].Children[Left].Key)
 		assert.Equal(t, "9", tree.root.Children[Right].Key)
 		assert.Equal(t, "99", tree.root.Children[Right].Children[Right].Key)
+	})
+
+	t.Run("오른쪽이 2 이상 길지만 rc.lc가 없는 경우, 일반 상태와 동일하지만 기존 r의 rc가 비어있는 상태로 변환", func(t *testing.T) {
+		tree := NewTree()
+
+		tree.Add("6", nil)
+		tree.Add("4", nil)
+		tree.Add("8", nil)
+		tree.Add("9", nil)
+		tree.Add("99", nil)
+		tree.Add("999", nil)
+		tree.Add("9999", nil)
+
+		tree.reBalance()
+
+		_, leftDepth := tree.getDeepest(tree.root.Children[Left])
+		_, rightDepth := tree.getDeepest(tree.root.Children[Right])
+		assert.LessOrEqual(t, abs(leftDepth-rightDepth), 1)
 	})
 }
