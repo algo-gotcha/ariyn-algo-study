@@ -60,6 +60,13 @@ func (t *Tree) Pop(key string) (b *BinaryNode) {
 	targetNode := t.getRightmost(b.Children[Left])
 	if targetNode == nil {
 		targetNode = t.getLeftmost(b.Children[Right])
+		if targetNode != nil && targetNode.Parent != nil {
+			targetNode.Parent.Children[Left] = targetNode.Children[Right]
+		}
+	} else {
+		if targetNode.Parent != nil {
+			targetNode.Parent.Children[Right] = targetNode.Children[Left]
+		}
 	}
 
 	if b.Parent != nil {
@@ -145,6 +152,7 @@ func (t *Tree) shouldReBalance() (should bool) {
 	return 2 <= math.Abs(float64(rightDepth-leftDepth))
 }
 
+// TODO: 3이상 depth가 차이날 때, reBalance를 하면 depth차이가 2가 됨. 따라서 언제나 rebalance 이후에는 depth 차이가 1이 되도록 수정할 것
 func (t *Tree) reBalance() {
 	if !t.shouldReBalance() || t.root == nil {
 		return
@@ -174,11 +182,11 @@ func (t *Tree) reBalance() {
 		rightChild := t.root.Children[Right] // right depth is bigger then left depth. This means there is always right child.
 		t.root.Parent = rightChild
 
-		if rightChild.Children[Left] != nil {
-			t.root.Children[Right] = rightChild.Children[Left]
-		}
+		t.root.Children[Right] = rightChild.Children[Left]
 		rightChild.Children[Left] = t.root
 
 		t.root = rightChild
 	}
+
+	t.root.Parent = nil
 }

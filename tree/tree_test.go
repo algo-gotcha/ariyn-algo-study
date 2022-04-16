@@ -130,6 +130,47 @@ func Test_Pop(t *testing.T) {
 		assert.Equal(t, wanted, n.Data)
 
 		assert.Equal(t, 171, tree.root.Data)
+		assert.Equal(t, 160, tree.root.Children[Left].Data)
+		assert.Nil(t, tree.root.Children[Left].Children[Right].Children[Right])
+	})
+
+	t.Run("root를 pop을 했을 때, 해당 자리에 left의 가장 오른쪽 node로 치환", func(t *testing.T) {
+		wanted := 180
+		tree := NewTree()
+
+		//               r
+		//         1             8
+		//      5    2        9      12
+		//     7 6  4  3   11  10  13  14
+		//           15
+		// ->
+		//                3
+		//         1             8
+		//      5    2        9      12
+		//    7  6  4  15   11  10  13  14
+
+		tree.Add("180", 180) // r
+		tree.Add("160", 160) // 1
+		tree.Add("170", 170) // 2
+		tree.Add("172", 172) // 3 => New Root
+		tree.Add("169", 169) // 4
+		tree.Add("150", 150) // 5
+		tree.Add("151", 151) // 6
+		tree.Add("149", 149) // 7
+		tree.Add("200", 200) // 8
+		tree.Add("190", 190) // 9
+		tree.Add("191", 191) // 10
+		tree.Add("189", 189) // 11
+		tree.Add("210", 210) // 12
+		tree.Add("209", 209) // 13
+		tree.Add("211", 211) // 14
+		tree.Add("171", 171) // 15
+
+		n := tree.Pop("180")
+		assert.Equal(t, wanted, n.Data)
+
+		assert.Equal(t, 172, tree.root.Data)
+		assert.Equal(t, 171, tree.root.Children[Left].Children[Right].Children[Right].Data)
 	})
 
 	t.Run("left가 없는 노드를 pop을 했을 때, 해당 자리에 right의 가장 왼쪽 node로 치환", func(t *testing.T) {
