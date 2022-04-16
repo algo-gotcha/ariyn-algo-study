@@ -3,8 +3,9 @@ package tree
 import "math"
 
 type Tree struct {
-	root  *BinaryNode
-	nodes []*BinaryNode
+	root        *BinaryNode
+	nodes       []*BinaryNode
+	autoBalance bool
 }
 
 func NewTree() (t Tree) {
@@ -15,7 +16,15 @@ func NewTree() (t Tree) {
 	return t
 }
 
+func (t *Tree) SetAutoBalance(v bool) {
+	t.autoBalance = v
+}
+
 func (t *Tree) Add(key string, data interface{}) {
+	if t.autoBalance {
+		defer t.reBalance()
+	}
+
 	node := NewNode(key, data)
 
 	if t.root == nil {
@@ -42,6 +51,10 @@ func (t *Tree) Pop(key string) (b *BinaryNode) {
 	b = t.root.Find(key)
 	if b == nil {
 		return
+	}
+
+	if t.autoBalance {
+		defer t.reBalance()
 	}
 
 	targetNode := t.getRightmost(b.Children[Left])
@@ -130,4 +143,42 @@ func (t *Tree) shouldReBalance() (should bool) {
 	}
 
 	return 2 <= math.Abs(float64(rightDepth-leftDepth))
+}
+
+func (t *Tree) reBalance() {
+	if !t.shouldReBalance() || t.root == nil {
+		return
+	}
+
+	var leftDepth, rightDepth int
+	if t.root.Children[Left] != nil {
+		_, leftDepth = t.getDeepest(t.root.Children[Left])
+	}
+	if t.root.Children[Right] != nil {
+		_, rightDepth = t.getDeepest(t.root.Children[Right])
+	}
+
+	if rightDepth < leftDepth {
+		leftChild := t.root.Children[Left] // left depth is bigger then right depth. this means there is always left child.
+		t.root.Parent = leftChild
+
+		if leftChild.Children[Right] != nil {
+			t.root.Children[Left] = leftChild.Children[Right]
+		}
+		leftChild.Children[Right] = t.root
+
+		t.root = leftChild
+	}
+
+	if leftDepth < rightDepth {
+		rightChild := t.root.Children[Right] // right depth is bigger then left depth. This means there is always right child.
+		t.root.Parent = rightChild
+
+		if rightChild.Children[Left] != nil {
+			t.root.Children[Right] = rightChild.Children[Left]
+		}
+		rightChild.Children[Left] = t.root
+
+		t.root = rightChild
+	}
 }

@@ -1,3 +1,15 @@
+// tree
+// defined acronyms
+// rc, RC, R.C., r.c. = Right Child
+// lc, LC, L.C., l.c. = Left Child
+// r, R = Root
+// t, T = Tree
+// n, N = Node
+
+// some expressions
+// r.lc = root > left child
+// rc.lc = right child > left child (2 depth)
+// rc.lc.rc = right child > left child > right child. NOT GOOD EXPRESSIONS. find alternative ways.
 package tree
 
 import (
@@ -231,5 +243,95 @@ func Test_ShouldReBalance(t *testing.T) {
 	t.Run("루트가 없을때, rebalance 필요 없음", func(t *testing.T) {
 		tree := NewTree()
 		assert.False(t, tree.shouldReBalance())
+	})
+}
+
+func Test_TreeReBalance(t *testing.T) {
+	// when left is deeper then right
+	//   1. set left child to root
+	//   2. set left child's right child to previous root's left child
+	//   2. make previous root to new root's right child
+	//           6            ->     4
+	//         /   \               /   \
+	//        4     8            3      6
+	//      /   \               /     /  \
+	//     3     5            1      5     8
+	//    /
+	//   1
+	t.Run("왼쪽이 2 이상 긴 경우, lc를 r로 변경하고 이전 r를 새로운 r의 rc로 변경 (일반 상태)", func(t *testing.T) {
+		tree := NewTree()
+
+		tree.Add("6", nil)
+		tree.Add("4", nil)
+		tree.Add("8", nil)
+		tree.Add("3", nil)
+		tree.Add("5", nil)
+		tree.Add("1", nil)
+
+		tree.reBalance()
+
+		assert.Equal(t, "4", tree.root.Key)
+		assert.Equal(t, "3", tree.root.Children[Left].Key)
+		assert.Equal(t, "1", tree.root.Children[Left].Children[Left].Key)
+		assert.Equal(t, "6", tree.root.Children[Right].Key)
+		assert.Equal(t, "5", tree.root.Children[Right].Children[Left].Key)
+		assert.Equal(t, "8", tree.root.Children[Right].Children[Right].Key)
+	})
+
+	// when rc is deeper is mirrored to lc is deeper
+	t.Run("왼쪽이 2 이상 길지만 lc.rc가 없는 경우, 일반 상태와 동일하지만 기존 r의 lc가 비어있는 상태로 변환", func(t *testing.T) {
+		tree := NewTree()
+
+		tree.Add("6", nil)
+		tree.Add("4", nil)
+		tree.Add("8", nil)
+		tree.Add("3", nil)
+		tree.Add("1", nil)
+
+		tree.reBalance()
+
+		assert.Equal(t, "4", tree.root.Key)
+		assert.Equal(t, "3", tree.root.Children[Left].Key)
+		assert.Equal(t, "1", tree.root.Children[Left].Children[Left].Key)
+		assert.Equal(t, "6", tree.root.Children[Right].Key)
+		assert.Equal(t, "8", tree.root.Children[Right].Children[Right].Key)
+	})
+
+	t.Run("오른쪽이 2 이상 긴 경우, rc를 r로 변경하고 이전 r를 새로운 r의 lc로 변경 (일반 상태)", func(t *testing.T) {
+		tree := NewTree()
+
+		tree.Add("6", nil)
+		tree.Add("4", nil)
+		tree.Add("8", nil)
+		tree.Add("7", nil)
+		tree.Add("9", nil)
+		tree.Add("99", nil)
+
+		tree.reBalance()
+
+		assert.Equal(t, "8", tree.root.Key)
+		assert.Equal(t, "6", tree.root.Children[Left].Key)
+		assert.Equal(t, "4", tree.root.Children[Left].Children[Left].Key)
+		assert.Equal(t, "7", tree.root.Children[Left].Children[Right].Key)
+		assert.Equal(t, "9", tree.root.Children[Right].Key)
+		assert.Equal(t, "99", tree.root.Children[Right].Children[Right].Key)
+	})
+
+	t.Run("오른쪽이 2 이상 길지만 rc.lc가 없는 경우, 일반 상태와 동일하지만 기존 r의 rc가 비어있는 상태로 변환", func(t *testing.T) {
+		tree := NewTree()
+
+		tree.Add("6", nil)
+		tree.Add("4", nil)
+		tree.Add("8", nil)
+		tree.Add("9", nil)
+		tree.Add("99", nil)
+
+		tree.reBalance()
+
+		assert.Equal(t, "8", tree.root.Key)
+		assert.Equal(t, "6", tree.root.Children[Left].Key)
+		assert.Equal(t, "4", tree.root.Children[Left].Children[Left].Key)
+		assert.Equal(t, "9", tree.root.Children[Right].Key)
+		assert.Equal(t, "99", tree.root.Children[Right].Children[Right].Key)
 	})
 }
