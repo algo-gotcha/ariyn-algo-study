@@ -126,6 +126,7 @@ func (t *Tree) getLeftmost(node *BinaryNode) (b *BinaryNode) {
 }
 
 // TODO: if node is nil, panic
+// redundant with node.BF()?
 func (t *Tree) getDeepest(node *BinaryNode) (b *BinaryNode, depth int) {
 	var leftNode, rightNode *BinaryNode
 	var leftDepth, rightDepth int
@@ -151,6 +152,7 @@ func (t *Tree) getDeepest(node *BinaryNode) (b *BinaryNode, depth int) {
 	}
 }
 
+// redundant with node.BF()?
 func (t *Tree) shouldReBalance(node *BinaryNode) (should bool) {
 	if node == nil {
 		return false
@@ -189,7 +191,7 @@ func (t *Tree) reBalance(node *BinaryNode) {
 		}
 
 		if leftDepth2 < rightDepth2 { // right-right
-			t.rotateLeft(node.Children[Right])
+			t.rotate(node.Children[Right], Left)
 		} else {
 			// right-left rotate
 			t.rotateRightLeft(node.Children[Right])
@@ -205,7 +207,7 @@ func (t *Tree) reBalance(node *BinaryNode) {
 		}
 
 		if rightDepth2 < leftDepth2 { // left-left
-			t.rotateRight(node.Children[Left])
+			t.rotate(node.Children[Left], Right)
 		} else {
 			// left-right rotate
 			t.rotateLeftRight(node.Children[Left])
@@ -213,8 +215,15 @@ func (t *Tree) reBalance(node *BinaryNode) {
 	}
 }
 
-func (t *Tree) rotateLeft(target *BinaryNode) {
-	if target == nil || target.Parent == nil || target.Parent.Children[Right] != target {
+func (t *Tree) rotate(target *BinaryNode, direction int) {
+	var opposite int
+	if direction == Left {
+		opposite = Right
+	} else {
+		opposite = Left
+	}
+
+	if target == nil || target.Parent == nil || target.Parent.Children[opposite] != target {
 		return
 	}
 
@@ -225,12 +234,12 @@ func (t *Tree) rotateLeft(target *BinaryNode) {
 	}
 	target.LocationInParent = parent.LocationInParent
 
-	target.Children[Left], parent.Children[Right] = parent, target.Children[Left]
-	if parent.Children[Right] != nil {
-		parent.Children[Right].Parent = parent
-		parent.Children[Right].LocationInParent = Right
+	target.Children[direction], parent.Children[opposite] = parent, target.Children[direction]
+	if parent.Children[opposite] != nil {
+		parent.Children[opposite].Parent = parent
+		parent.Children[opposite].LocationInParent = opposite
 	}
-	parent.LocationInParent = Left
+	parent.LocationInParent = direction
 
 	if t.root == parent {
 		t.root = target
@@ -238,37 +247,13 @@ func (t *Tree) rotateLeft(target *BinaryNode) {
 }
 
 func (t *Tree) rotateRightLeft(target *BinaryNode) {
-	t.rotateRight(target.Children[Left])
-	t.rotateLeft(target.Parent)
-}
-
-func (t *Tree) rotateRight(target *BinaryNode) {
-	if target == nil || target.Parent == nil || target.Parent.Children[Left] != target {
-		return
-	}
-
-	parent := target.Parent
-	target.Parent, parent.Parent = parent.Parent, target
-	if target.Parent != nil {
-		target.Parent.Children[parent.LocationInParent] = target
-	}
-	target.LocationInParent = parent.LocationInParent
-
-	target.Children[Right], parent.Children[Left] = parent, target.Children[Right]
-	if parent.Children[Left] != nil {
-		parent.Children[Left].Parent = parent
-		parent.Children[Left].LocationInParent = Left
-	}
-	parent.LocationInParent = Right
-
-	if t.root == parent {
-		t.root = target
-	}
+	t.rotate(target.Children[Left], Right)
+	t.rotate(target.Parent, Left)
 }
 
 func (t *Tree) rotateLeftRight(target *BinaryNode) {
-	t.rotateLeft(target.Children[Right])
-	t.rotateRight(target.Parent)
+	t.rotate(target.Children[Right], Left)
+	t.rotate(target.Parent, Right)
 }
 
 func (t *Tree) Viz() string {
