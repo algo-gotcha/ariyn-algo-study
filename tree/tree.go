@@ -42,17 +42,16 @@ func (t *Tree) Add(key string, data interface{}) {
 }
 
 func (t *Tree) checkReBalance(node *BinaryNode) *BinaryNode {
-	p := node
-
-	for p.Parent != nil {
-		p = p.Parent
-
-		if p.BF() <= -2 || 2 <= p.BF() {
-			return p
-		}
+	if node.Parent == nil {
+		return nil
 	}
 
-	return nil
+	bf := node.Parent.BF()
+	if bf <= -2 || 2 <= bf {
+		return node.Parent
+	}
+
+	return t.checkReBalance(node.Parent)
 }
 
 func (t *Tree) Get(key string) *BinaryNode {
