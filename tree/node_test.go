@@ -16,8 +16,11 @@ func TestBinaryNode_Depth(t *testing.T) {
 		n2 := NewNode("test2", nil)
 		n1 := NewNode("test1", nil)
 
-		n1.AddChild(n2)
-		n2.AddChild(n3)
+		added := n1.AddChild(n2)
+		assert.True(t, added)
+
+		added = n2.AddChild(n3)
+		assert.True(t, added)
 
 		assert.Equal(t, 2, n3.Depth())
 	})

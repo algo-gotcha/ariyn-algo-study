@@ -261,7 +261,7 @@ func Test_ShouldReBalance(t *testing.T) {
 		tree.Add("181", 181)
 		tree.Add("182", 182)
 
-		assert.True(t, tree.shouldReBalance())
+		assert.True(t, tree.shouldReBalance(tree.root))
 	})
 
 	t.Run("루트의 왼쪽과 오른쪽의 깊이가 2 미만 차이날 때, rebalance 필요 없음", func(t *testing.T) {
@@ -269,26 +269,26 @@ func Test_ShouldReBalance(t *testing.T) {
 		tree.Add("180", 180)
 		tree.Add("181", 181)
 
-		assert.False(t, tree.shouldReBalance())
+		assert.False(t, tree.shouldReBalance(tree.root))
 
 		tree = NewTree()
 		tree.Add("180", 180)
 		tree.Add("181", 181)
 		tree.Add("179", 79)
 
-		assert.False(t, tree.shouldReBalance())
+		assert.False(t, tree.shouldReBalance(tree.root))
 	})
 
 	t.Run("루트의 자식이 없을때, rebalance 필요 없음", func(t *testing.T) {
 		tree := NewTree()
 		tree.Add("180", 180)
 
-		assert.False(t, tree.shouldReBalance())
+		assert.False(t, tree.shouldReBalance(tree.root))
 	})
 
 	t.Run("루트가 없을때, rebalance 필요 없음", func(t *testing.T) {
 		tree := NewTree()
-		assert.False(t, tree.shouldReBalance())
+		assert.False(t, tree.shouldReBalance(tree.root))
 	})
 }
 
@@ -314,7 +314,7 @@ func Test_TreeReBalance(t *testing.T) {
 		tree.Add("5", nil)
 		tree.Add("1", nil)
 
-		tree.reBalance()
+		tree.reBalance(tree.root)
 
 		assert.Equal(t, "4", tree.root.Key)
 		assert.Equal(t, "3", tree.root.Children[Left].Key)
@@ -334,7 +334,7 @@ func Test_TreeReBalance(t *testing.T) {
 		tree.Add("3", nil)
 		tree.Add("1", nil)
 
-		tree.reBalance()
+		tree.reBalance(tree.root)
 
 		assert.Equal(t, "4", tree.root.Key)
 		assert.Equal(t, "3", tree.root.Children[Left].Key)
@@ -353,7 +353,7 @@ func Test_TreeReBalance(t *testing.T) {
 		tree.Add("9", nil)
 		tree.Add("99", nil)
 
-		tree.reBalance()
+		tree.reBalance(tree.root)
 
 		assert.Equal(t, "8", tree.root.Key)
 		assert.Equal(t, "6", tree.root.Children[Left].Key)
@@ -372,7 +372,7 @@ func Test_TreeReBalance(t *testing.T) {
 		tree.Add("9", nil)
 		tree.Add("99", nil)
 
-		tree.reBalance()
+		tree.reBalance(tree.root)
 
 		assert.Equal(t, "8", tree.root.Key)
 		assert.Equal(t, "6", tree.root.Children[Left].Key)
@@ -386,16 +386,75 @@ func Test_TreeReBalance(t *testing.T) {
 
 		tree.Add("6", nil)
 		tree.Add("4", nil)
-		tree.Add("8", nil)
-		tree.Add("9", nil)
-		tree.Add("99", nil)
-		tree.Add("999", nil)
-		tree.Add("9999", nil)
+		tree.Add("8", nil)    // rc
+		tree.Add("9", nil)    // rc.rc
+		tree.Add("99", nil)   // rc.rc.rc
+		tree.Add("999", nil)  // rc.rc.rc.rc
+		tree.Add("9999", nil) // rc.rc.rc.rc.rc
 
-		tree.reBalance()
+		tree.reBalance(tree.root.Children[Right].Children[Right].Children[Right])
+		tree.reBalance(tree.root.Children[Right].Children[Right])
+		tree.reBalance(tree.root.Children[Right])
+		tree.reBalance(tree.root)
 
 		_, leftDepth := tree.getDeepest(tree.root.Children[Left])
 		_, rightDepth := tree.getDeepest(tree.root.Children[Right])
 		assert.LessOrEqual(t, abs(leftDepth-rightDepth), 1)
+	})
+
+	t.Run("autoBalance가 켜져있는 상태에서 좌우 depth가 2 이상 차이나는 경우, 자동으로 균형을 맞춤 ", func(t *testing.T) {
+		tree := NewTree()
+		tree.autoBalance = true
+
+		tree.Add("6", nil)
+		tree.Add("8", nil) // rc
+		tree.Add("9", nil) // rc.rc
+
+		assert.Equal(t, "8", tree.root.Key)
+		assert.Equal(t, "6", tree.root.Children[Left].Key)
+		assert.Equal(t, "9", tree.root.Children[Right].Key)
+	})
+
+	t.Run("autoBalance가 켜져있는 상태에서 위키 avl 예제와 동일하게 동작하는지 테스트", func(t *testing.T) {
+		tree := NewTree()
+		tree.autoBalance = true
+
+		tree.Add("60", nil)
+		tree.Add("80", nil) // rc
+		tree.Add("90", nil) // rc.rc
+
+		assert.Equal(t, "80", tree.root.Key)
+		assert.Equal(t, "60", tree.root.Children[Left].Key)
+		assert.Equal(t, "90", tree.root.Children[Right].Key)
+
+		tree.Add("50", nil)
+		tree.Add("40", nil)
+
+		assert.Equal(t, "50", tree.root.Children[Left].Key)
+		assert.Equal(t, "40", tree.root.Children[Left].Children[Left].Key)
+		assert.Equal(t, "60", tree.root.Children[Left].Children[Right].Key)
+
+		tree.Add("95", nil)
+		tree.Add("93", nil)
+
+		assert.Equal(t, "93", tree.root.Children[Right].Key)
+		assert.Equal(t, "95", tree.root.Children[Right].Children[Right].Key)
+		assert.Equal(t, "90", tree.root.Children[Right].Children[Left].Key)
+
+		tree.Add("30", nil)
+		tree.Add("35", nil)
+
+		assert.Equal(t, "35", tree.root.Children[Left].Children[Left].Key)
+		assert.Equal(t, "30", tree.root.Children[Left].Children[Left].Children[Left].Key)
+		assert.Equal(t, "40", tree.root.Children[Left].Children[Left].Children[Right].Key)
+
+		tree.Add("20", nil)
+
+		assert.Equal(t, "35", tree.root.Children[Left].Key)
+		assert.Equal(t, "30", tree.root.Children[Left].Children[Left].Key)
+		assert.Equal(t, "20", tree.root.Children[Left].Children[Left].Children[Left].Key)
+		assert.Equal(t, "50", tree.root.Children[Left].Children[Right].Key)
+		assert.Equal(t, "40", tree.root.Children[Left].Children[Right].Children[Left].Key)
+		assert.Equal(t, "60", tree.root.Children[Left].Children[Right].Children[Right].Key)
 	})
 }

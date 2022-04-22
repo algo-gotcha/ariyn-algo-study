@@ -1,7 +1,5 @@
 package tree
 
-import "log"
-
 const (
 	Left  = 1
 	Right = 2
@@ -24,42 +22,52 @@ func NewNode(key string, data interface{}) *BinaryNode {
 	}
 }
 
+func (n *BinaryNode) Left() *BinaryNode {
+	if n == nil { // necessary?
+		return nil
+	}
+	return n.Children[Left]
+}
+
+func (n *BinaryNode) Right() *BinaryNode {
+	if n == nil {
+		return nil
+	}
+
+	return n.Children[Right]
+}
+
+func (n *BinaryNode) BF() int {
+	rcDepth := n.Right().MaxDepth()
+	lcDepth := n.Left().MaxDepth()
+
+	return rcDepth - lcDepth
+}
+
 func (n *BinaryNode) AddChild(c *BinaryNode) (added bool) {
-	parent := n.FindParent(c.Key)
-	if parent == nil {
+	if n == nil {
 		return false
 	}
 
-	c.Parent = parent
-	if parent.Key < c.Key {
-		parent.Children[Right] = c
-		c.LocationInParent = Right
+	var position int
+
+	if n.Key < c.Key {
+		position = Right
 	} else {
-		parent.Children[Left] = c
-		c.LocationInParent = Left
+		position = Left
 	}
 
-	return true
-}
+	if n.Children[position] == nil {
+		n.Children[position] = c
+		c.Parent = n
+		c.LocationInParent = position
 
-func (n *BinaryNode) FindParent(key string) (p *BinaryNode) {
-	p = n
-
-	if p.Key < key { // c goes to right
-		if p.Children[Right] == nil {
-			return
-		} else {
-			return p.Children[Right].FindParent(key)
-		}
-	} else if p.Key == key { // key duplicated. impossible to insert
-		return nil
-	} else { // c goes to left when less
-		if p.Children[Left] == nil {
-			return
-		} else {
-			return p.Children[Left].FindParent(key)
-		}
+		added = true
+	} else {
+		added = n.Children[position].AddChild(c)
 	}
+
+	return
 }
 
 func (n *BinaryNode) Find(key string) (p *BinaryNode) {
@@ -72,7 +80,6 @@ func (n *BinaryNode) Find(key string) (p *BinaryNode) {
 			return p.Children[Right].Find(key)
 		}
 	} else if p.Key == key {
-		log.Println("returned", p)
 		return
 	} else {
 		if p.Children[Left] == nil {
@@ -84,11 +91,23 @@ func (n *BinaryNode) Find(key string) (p *BinaryNode) {
 }
 
 func (n *BinaryNode) Depth() (d int) {
-	d = 1
+	if n == nil || n.Parent == nil {
+		return 0
+	}
+	return n.Parent.Depth() + 1
+}
 
-	if n.Parent == nil {
+func (n *BinaryNode) MaxDepth() int {
+	if n == nil {
 		return 0
 	}
 
-	return d + n.Parent.Depth()
+	lDepth := n.Left().MaxDepth() + 1
+	rDepth := n.Right().MaxDepth() + 1
+
+	if lDepth < rDepth {
+		return rDepth
+	} else {
+		return lDepth
+	}
 }

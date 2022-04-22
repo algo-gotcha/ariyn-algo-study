@@ -1,6 +1,10 @@
 package tree
 
-import "math"
+import (
+	"fmt"
+	"math"
+	"strings"
+)
 
 type Tree struct {
 	root        *BinaryNode
@@ -21,18 +25,34 @@ func (t *Tree) SetAutoBalance(v bool) {
 }
 
 func (t *Tree) Add(key string, data interface{}) {
-	if t.autoBalance {
-		defer t.reBalance()
-	}
-
 	node := NewNode(key, data)
 
 	if t.root == nil {
 		t.root = node
 	} else {
-		t.root.AddChild(node)
+		added := t.root.AddChild(node)
+
+		if added && t.autoBalance {
+			if target := t.checkReBalance(node); target != nil {
+				t.reBalance(target)
+			}
+		}
 	}
 	t.nodes = append(t.nodes, node)
+}
+
+func (t *Tree) checkReBalance(node *BinaryNode) *BinaryNode {
+	p := node
+
+	for p.Parent != nil {
+		p = p.Parent
+
+		if p.BF() <= -2 || 2 <= p.BF() {
+			return p
+		}
+	}
+
+	return nil
 }
 
 func (t *Tree) Get(key string) *BinaryNode {
@@ -51,10 +71,6 @@ func (t *Tree) Pop(key string) (b *BinaryNode) {
 	b = t.root.Find(key)
 	if b == nil {
 		return
-	}
-
-	if t.autoBalance {
-		defer t.reBalance()
 	}
 
 	targetNode := t.getRightmost(b.Children[Left])
@@ -109,6 +125,7 @@ func (t *Tree) getLeftmost(node *BinaryNode) (b *BinaryNode) {
 	return node
 }
 
+// TODO: if node is nil, panic
 func (t *Tree) getDeepest(node *BinaryNode) (b *BinaryNode, depth int) {
 	var leftNode, rightNode *BinaryNode
 	var leftDepth, rightDepth int
@@ -134,59 +151,141 @@ func (t *Tree) getDeepest(node *BinaryNode) (b *BinaryNode, depth int) {
 	}
 }
 
-func (t *Tree) shouldReBalance() (should bool) {
-	if t.root == nil {
+func (t *Tree) shouldReBalance(node *BinaryNode) (should bool) {
+	if node == nil {
 		return false
 	}
-
 	var leftDepth, rightDepth int
 
-	if t.root.Children[Left] != nil {
-		_, leftDepth = t.getDeepest(t.root.Children[Left])
+	if node.Children[Left] != nil {
+		_, leftDepth = t.getDeepest(node.Children[Left])
 	}
 
-	if t.root.Children[Right] != nil {
-		_, rightDepth = t.getDeepest(t.root.Children[Right])
+	if node.Children[Right] != nil {
+		_, rightDepth = t.getDeepest(node.Children[Right])
 	}
 
 	return 2 <= math.Abs(float64(rightDepth-leftDepth))
 }
 
-// TODO: 3이상 depth가 차이날 때, reBalance를 하면 depth차이가 2가 됨. 따라서 언제나 rebalance 이후에는 depth 차이가 1이 되도록 수정할 것
-func (t *Tree) reBalance() {
-	if !t.shouldReBalance() || t.root == nil {
+func (t *Tree) reBalance(node *BinaryNode) {
+	var leftDepth, rightDepth int
+
+	if node.Children[Left] != nil {
+		_, leftDepth = t.getDeepest(node.Children[Left])
+	}
+	if node.Children[Right] != nil {
+		_, rightDepth = t.getDeepest(node.Children[Right])
+	}
+
+	if leftDepth < rightDepth { // Right Heavy
+		var leftDepth2, rightDepth2 int
+
+		if node.Children[Right].Children[Left] != nil {
+			_, leftDepth2 = t.getDeepest(node.Children[Right].Children[Left])
+		}
+		if node.Children[Right].Children[Right] != nil {
+			_, rightDepth2 = t.getDeepest(node.Children[Right].Children[Right])
+		}
+
+		if leftDepth2 < rightDepth2 { // right-right
+			t.rotateLeft(node.Children[Right])
+		} else {
+			// right-left rotate
+			t.rotateRightLeft(node.Children[Right])
+		}
+	} else if rightDepth < leftDepth { // left heavy
+		var leftDepth2, rightDepth2 int
+
+		if node.Children[Left].Children[Left] != nil {
+			_, leftDepth2 = t.getDeepest(node.Children[Left].Children[Left])
+		}
+		if node.Children[Left].Children[Right] != nil {
+			_, rightDepth2 = t.getDeepest(node.Children[Left].Children[Right])
+		}
+
+		if rightDepth2 < leftDepth2 { // left-left
+			t.rotateRight(node.Children[Left])
+		} else {
+			// left-right rotate
+			t.rotateLeftRight(node.Children[Left])
+		}
+	}
+}
+
+func (t *Tree) rotateLeft(target *BinaryNode) {
+	if target == nil || target.Parent == nil || target.Parent.Children[Right] != target {
 		return
 	}
 
-	var leftDepth, rightDepth int
-	if t.root.Children[Left] != nil {
-		_, leftDepth = t.getDeepest(t.root.Children[Left])
+	parent := target.Parent
+	target.Parent, parent.Parent = parent.Parent, target
+	if target.Parent != nil {
+		target.Parent.Children[parent.LocationInParent] = target
 	}
-	if t.root.Children[Right] != nil {
-		_, rightDepth = t.getDeepest(t.root.Children[Right])
+	target.LocationInParent = parent.LocationInParent
+
+	target.Children[Left], parent.Children[Right] = parent, target.Children[Left]
+	if parent.Children[Right] != nil {
+		parent.Children[Right].Parent = parent
+		parent.Children[Right].LocationInParent = Right
+	}
+	parent.LocationInParent = Left
+
+	if t.root == parent {
+		t.root = target
+	}
+}
+
+func (t *Tree) rotateRightLeft(target *BinaryNode) {
+	t.rotateRight(target.Children[Left])
+	t.rotateLeft(target.Parent)
+}
+
+func (t *Tree) rotateRight(target *BinaryNode) {
+	if target == nil || target.Parent == nil || target.Parent.Children[Left] != target {
+		return
 	}
 
-	if rightDepth < leftDepth {
-		leftChild := t.root.Children[Left] // left depth is bigger then right depth. this means there is always left child.
-		t.root.Parent = leftChild
+	parent := target.Parent
+	target.Parent, parent.Parent = parent.Parent, target
+	if target.Parent != nil {
+		target.Parent.Children[parent.LocationInParent] = target
+	}
+	target.LocationInParent = parent.LocationInParent
 
-		if leftChild.Children[Right] != nil {
-			t.root.Children[Left] = leftChild.Children[Right]
-		}
-		leftChild.Children[Right] = t.root
+	target.Children[Right], parent.Children[Left] = parent, target.Children[Right]
+	if parent.Children[Left] != nil {
+		parent.Children[Left].Parent = parent
+		parent.Children[Left].LocationInParent = Left
+	}
+	parent.LocationInParent = Right
 
-		t.root = leftChild
+	if t.root == parent {
+		t.root = target
+	}
+}
+
+func (t *Tree) rotateLeftRight(target *BinaryNode) {
+	t.rotateLeft(target.Children[Right])
+	t.rotateRight(target.Parent)
+}
+
+func (t *Tree) Viz() string {
+	edges := t.viz(t.root)
+	return fmt.Sprintf("digraph {\n%s\n}", strings.Join(edges, "\n"))
+}
+
+func (t *Tree) viz(n *BinaryNode) (edges []string) {
+	if n.Left() != nil {
+		edges = append(edges, fmt.Sprintf("%s -> %s", n.Key, n.Left().Key))
+		edges = append(edges, t.viz(n.Left())...)
 	}
 
-	if leftDepth < rightDepth {
-		rightChild := t.root.Children[Right] // right depth is bigger then left depth. This means there is always right child.
-		t.root.Parent = rightChild
-
-		t.root.Children[Right] = rightChild.Children[Left]
-		rightChild.Children[Left] = t.root
-
-		t.root = rightChild
+	if n.Right() != nil {
+		edges = append(edges, fmt.Sprintf("%s -> %s", n.Key, n.Right().Key))
+		edges = append(edges, t.viz(n.Right())...)
 	}
 
-	t.root.Parent = nil
+	return
 }
